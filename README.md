@@ -1,8 +1,10 @@
-# max_flow
+# max-flow
 
-max_flow: Single-file Python CLI tool. Zero dependencies, Python 3.8+.
+Single-file Python CLI. Zero dependencies.
 
 ## Usage
+
 ```bash
-python3 max_flow.py --test
+python3 max_flow.py
+python3 max_flow.py test
 ```
