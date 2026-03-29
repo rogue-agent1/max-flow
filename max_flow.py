@@ -1,97 +1,87 @@
 #!/usr/bin/env python3
-"""max_flow: Ford-Fulkerson max flow (BFS/Edmonds-Karp)."""
-from collections import deque
+"""max_flow - Maximum flow algorithms (Ford-Fulkerson with BFS/Edmonds-Karp)."""
 import sys
+from collections import deque
 
-def max_flow(capacity, source, sink):
-    n = len(capacity)
-    residual = [row[:] for row in capacity]
-    total = 0
-    while True:
-        parent = [-1] * n
-        parent[source] = source
-        queue = deque([source])
-        while queue and parent[sink] == -1:
-            u = queue.popleft()
-            for v in range(n):
-                if parent[v] == -1 and residual[u][v] > 0:
-                    parent[v] = u
-                    queue.append(v)
-        if parent[sink] == -1: break
-        # Find bottleneck
-        path_flow = float('inf')
-        v = sink
-        while v != source:
-            u = parent[v]
-            path_flow = min(path_flow, residual[u][v])
-            v = u
-        # Update residual
-        v = sink
-        while v != source:
-            u = parent[v]
-            residual[u][v] -= path_flow
-            residual[v][u] += path_flow
-            v = u
-        total += path_flow
-    return total
+class FlowNetwork:
+    def __init__(self, n):
+        self.n = n
+        self.capacity = [[0]*n for _ in range(n)]
+        self.flow = [[0]*n for _ in range(n)]
 
-def min_cut(capacity, source, sink):
-    n = len(capacity)
-    residual = [row[:] for row in capacity]
-    # Run max flow first
-    while True:
-        parent = [-1] * n
-        parent[source] = source
+    def add_edge(self, u, v, cap):
+        self.capacity[u][v] += cap
+
+    def _bfs(self, source, sink, parent):
+        visited = [False]*self.n
+        visited[source] = True
         queue = deque([source])
-        while queue and parent[sink] == -1:
+        while queue:
             u = queue.popleft()
-            for v in range(n):
-                if parent[v] == -1 and residual[u][v] > 0:
+            for v in range(self.n):
+                if not visited[v] and self.capacity[u][v] - self.flow[u][v] > 0:
+                    visited[v] = True
                     parent[v] = u
+                    if v == sink:
+                        return True
                     queue.append(v)
-        if parent[sink] == -1: break
-        path_flow = float('inf')
-        v = sink
-        while v != source:
-            u = parent[v]; path_flow = min(path_flow, residual[u][v]); v = u
-        v = sink
-        while v != source:
-            u = parent[v]; residual[u][v] -= path_flow; residual[v][u] += path_flow; v = u
-    # BFS on residual to find reachable
-    visited = [False] * n
-    queue = deque([source]); visited[source] = True
-    while queue:
-        u = queue.popleft()
-        for v in range(n):
-            if not visited[v] and residual[u][v] > 0:
-                visited[v] = True; queue.append(v)
-    cuts = []
-    for u in range(n):
-        for v in range(n):
-            if visited[u] and not visited[v] and capacity[u][v] > 0:
-                cuts.append((u, v))
-    return cuts
+        return False
+
+    def max_flow(self, source, sink):
+        total = 0
+        parent = [-1]*self.n
+        while self._bfs(source, sink, parent):
+            path_flow = float('inf')
+            v = sink
+            while v != source:
+                u = parent[v]
+                path_flow = min(path_flow, self.capacity[u][v] - self.flow[u][v])
+                v = u
+            v = sink
+            while v != source:
+                u = parent[v]
+                self.flow[u][v] += path_flow
+                self.flow[v][u] -= path_flow
+                v = u
+            total += path_flow
+            parent = [-1]*self.n
+        return total
+
+    def min_cut(self, source):
+        visited = [False]*self.n
+        queue = deque([source])
+        visited[source] = True
+        while queue:
+            u = queue.popleft()
+            for v in range(self.n):
+                if not visited[v] and self.capacity[u][v] - self.flow[u][v] > 0:
+                    visited[v] = True
+                    queue.append(v)
+        cut_edges = []
+        for u in range(self.n):
+            for v in range(self.n):
+                if visited[u] and not visited[v] and self.capacity[u][v] > 0:
+                    cut_edges.append((u, v))
+        return cut_edges
 
 def test():
-    # Simple network
-    cap = [[0,16,13,0,0,0],
-           [0,0,10,12,0,0],
-           [0,4,0,0,14,0],
-           [0,0,9,0,0,20],
-           [0,0,0,7,0,4],
-           [0,0,0,0,0,0]]
-    assert max_flow(cap, 0, 5) == 23
-    # Simple 2-node
-    cap2 = [[0,5],[0,0]]
-    assert max_flow(cap2, 0, 1) == 5
-    # Parallel paths
-    cap3 = [[0,3,3,0],[0,0,0,3],[0,0,0,3],[0,0,0,0]]
-    assert max_flow(cap3, 0, 3) == 6
-    # Min cut
-    cuts = min_cut(cap, 0, 5)
-    assert len(cuts) > 0
+    g = FlowNetwork(6)
+    g.add_edge(0,1,16); g.add_edge(0,2,13)
+    g.add_edge(1,2,10); g.add_edge(1,3,12)
+    g.add_edge(2,1,4);  g.add_edge(2,4,14)
+    g.add_edge(3,2,9);  g.add_edge(3,5,20)
+    g.add_edge(4,3,7);  g.add_edge(4,5,4)
+    assert g.max_flow(0, 5) == 23
+    cut = g.min_cut(0)
+    assert len(cut) > 0
+    g2 = FlowNetwork(4)
+    g2.add_edge(0,1,10); g2.add_edge(0,2,10)
+    g2.add_edge(1,3,10); g2.add_edge(2,3,10)
+    assert g2.max_flow(0, 3) == 20
+    g3 = FlowNetwork(2)
+    g3.add_edge(0,1,5)
+    assert g3.max_flow(0, 1) == 5
     print("All tests passed!")
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "test": test()
-    else: print("Usage: max_flow.py test")
+    test() if "--test" in sys.argv else print("max_flow: Maximum flow. Use --test")

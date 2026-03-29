@@ -1,11 +1,8 @@
 # max_flow
 
-max_flow: Ford-Fulkerson max flow (BFS/Edmonds-Karp).
-
-Single-file, zero-dependency Python CLI.
+max_flow: Single-file Python CLI tool. Zero dependencies, Python 3.8+.
 
 ## Usage
-
 ```bash
-python3 max_flow.py test
+python3 max_flow.py --test
 ```
